@@ -12,12 +12,19 @@ import {
   CardMedia,
   CardContent,
   IconButton,
+  Collapse,
 } from "@mui/material";
-// เพิ่ม Icon สำหรับเลื่อนหน้าจอ และ Icon สำหรับปิด Modal
+// Icons
 import KeyboardDoubleArrowDownIcon from "@mui/icons-material/KeyboardDoubleArrowDown";
 import CloseIcon from "@mui/icons-material/Close";
+import PlayArrowIcon from "@mui/icons-material/PlayArrow";
+import PauseIcon from "@mui/icons-material/Pause";
+import VolumeUpIcon from "@mui/icons-material/VolumeUp";
+import VolumeDownIcon from "@mui/icons-material/VolumeDown";
+import MusicNoteIcon from "@mui/icons-material/MusicNote"; // ไอคอนสำหรับปุ่มตอนหด
+import { Slider } from "@mui/material";
 
-// ====== 1. นำเข้าไฟล์ภาพ Face (ภาพหน้ากาก) จากโฟลเดอร์ assets ======
+// ====== 1. นำเข้าไฟล์ภาพ Face (ภาพหน้ากาก) ======
 import imgChiken from "./assets/Chiken.png";
 import imgHibiki from "./assets/Hibiki.jpg";
 import imgKyora from "./assets/Kyora.png";
@@ -25,7 +32,7 @@ import imgShoji from "./assets/Shoji.png";
 import imgSyouma from "./assets/Syouma.jpg";
 import imgZeirina from "./assets/Zeirina.jpg";
 
-// ====== 2. นำเข้าไฟล์ภาพ Performance (ภาพเล่นดนตรี) จากโฟลเดอร์ Instruments ======
+// ====== 2. นำเข้าไฟล์ภาพ Performance ======
 import perfBass from "./assets/Instruments/Bass.jpg";
 import perfDrums from "./assets/Instruments/Drums.jpg";
 import perfGuitar from "./assets/Instruments/Guitar.jpg";
@@ -33,15 +40,18 @@ import perfKeyboard from "./assets/Instruments/Keyboard.jpg";
 import perfTheramin from "./assets/Instruments/Theramin.jpg";
 import perfVocal from "./assets/Instruments/Vocal.jpg";
 
-// 1. สร้าง Theme ที่สะท้อนความเป็น MUKA
+// ====== 3. นำเข้าไฟล์เพลง (ตัวอย่าง: เอาคอมเมนต์ออกแล้วใช้จริงได้เลย) ======
+// import mukaThemeSong from './assets/muka-theme.mp3';
+
+// 1. สร้าง Theme
 const mukaTheme = createTheme({
   palette: {
     mode: "dark",
     primary: {
-      main: "#bc002d", // สีแดงก่ำแบบขบถ (สีหลักของวง)
+      main: "#bc002d",
     },
     background: {
-      default: "#050505", // ดำเกือบสนิท
+      default: "#050505",
     },
   },
   typography: {
@@ -49,8 +59,6 @@ const mukaTheme = createTheme({
   },
 });
 
-// ข้อมูลสมาชิกทั้ง 6 คน (เพิ่มสีประจำตัว memberColor)
-// *** คุณสามารถเปลี่ยนรหัสสี HEX ตรงนี้ให้ตรงกับสีจริงๆ ของตัวละครได้เลยครับ ***
 const members = [
   {
     id: 1,
@@ -60,7 +68,7 @@ const members = [
     nameEN: "Hanayagi Zeirina",
     role: "นักร้องนำ (Vocal)",
     maskType: "นางฟ้า",
-    memberColor: "#fd0051", // สีทอง (สมมติสำหรับนางฟ้า)
+    memberColor: "#fd0051",
     imgPerformance: perfVocal,
     imgFace: imgZeirina,
   },
@@ -72,7 +80,7 @@ const members = [
     nameEN: "Chiken",
     role: "กีตาร์ (Guitar)",
     maskType: "พระ",
-    memberColor: "#0001ff", // สีส้ม (สมมติสำหรับพระ)
+    memberColor: "#0001ff",
     imgPerformance: perfGuitar,
     imgFace: imgChiken,
   },
@@ -84,7 +92,7 @@ const members = [
     nameEN: "Oota Syouma",
     role: "เธรามิน (Theramin)",
     maskType: "กระสอบ",
-    memberColor: "#81defe", // สีน้ำตาล (สมมติสำหรับกระสอบ)
+    memberColor: "#81defe",
     imgPerformance: perfTheramin,
     imgFace: imgSyouma,
   },
@@ -96,7 +104,7 @@ const members = [
     nameEN: "Akagi Hibiki",
     role: "กลอง (Drums)",
     maskType: "แพะ",
-    memberColor: "#ff5c3b", // สีแดงเข้ม (สมมติสำหรับแพะ)
+    memberColor: "#ff5c3b",
     imgPerformance: perfDrums,
     imgFace: imgHibiki,
   },
@@ -128,6 +136,28 @@ const members = [
 
 function App() {
   const [selectedFace, setSelectedFace] = useState(null);
+
+  // === State สำหรับเครื่องเล่นเพลง ===
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [volume, setVolume] = useState(0.3);
+  const [isExpanded, setIsExpanded] = useState(true); // State ควบคุมการหด/ขยาย เริ่มต้นให้กางออก
+  const audioRef = React.useRef(null);
+
+  const togglePlay = () => {
+    if (isPlaying) {
+      audioRef.current.pause();
+    } else {
+      audioRef.current.play();
+    }
+    setIsPlaying(!isPlaying);
+  };
+
+  const handleVolumeChange = (event, newValue) => {
+    setVolume(newValue);
+    if (audioRef.current) {
+      audioRef.current.volume = newValue;
+    }
+  };
 
   const scrollToMembers = () => {
     document
@@ -186,11 +216,7 @@ function App() {
               </Typography>
               <Typography
                 variant="h5"
-                sx={{
-                  fontWeight: 300,
-                  fontStyle: "italic",
-                  color: "grey.500",
-                }}
+                sx={{ fontWeight: 300, fontStyle: "italic", color: "grey.500" }}
               >
                 “เพื่อประกาศศรัทธาใหม่”
               </Typography>
@@ -287,23 +313,21 @@ function App() {
                     height: "100%",
                     display: "flex",
                     flexDirection: "column",
-                    // === เปลี่ยน Effect ตอน Hover ให้เรืองแสงเป็นสีประจำตัว ===
                     "&:hover": {
                       transform: "translateY(-15px)",
-                      borderColor: member.memberColor, // ขอบเป็นสีประจำตัว
-                      boxShadow: `0 15px 40px ${member.memberColor}66`, // แสงฟุ้งเป็นสีประจำตัว (เติม 66 ต่อท้ายคือปรับ Opacity)
+                      borderColor: member.memberColor,
+                      boxShadow: `0 15px 40px ${member.memberColor}66`,
                       "& .member-img": {
                         filter: "grayscale(0%) contrast(1.1)",
                         transform: "scale(1.05)",
                       },
                       "& .member-info": {
-                        // เปลี่ยนสีพื้นหลังตอน Hover ให้มีติ่งสีประจำตัวนิดๆ
                         background: `linear-gradient(transparent, ${member.memberColor}E6)`,
                         pb: 6,
                       },
                       "& .reveal-text": {
                         opacity: 1,
-                        color: member.memberColor, // ตัวหนังสือ CLICK TO REVEAL เป็นสีประจำตัว
+                        color: member.memberColor,
                       },
                     },
                   }}
@@ -363,8 +387,6 @@ function App() {
                     >
                       {member.stageName}
                     </Typography>
-
-                    {/* === เปลี่ยนสีชื่อตำแหน่งในหน้า Grid ให้เป็นสีประจำตัว === */}
                     <Typography
                       variant="subtitle2"
                       sx={{
@@ -386,7 +408,7 @@ function App() {
         </Container>
       </Box>
 
-      {/* ================= FACE REVEAL MODAL (OVERLAY) ================= */}
+      {/* ================= FACE REVEAL MODAL ================= */}
       {selectedFace && (
         <Box
           sx={{
@@ -400,10 +422,10 @@ function App() {
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
-            backdropFilter: "blur(25px)", // ปรับเบลอให้เยอะขึ้นเป็น 25px
-            animation: "popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)", // แอนิเมชันเด้งดึ๋งนิดๆ
+            backdropFilter: "blur(25px)",
+            animation: "popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
             "@keyframes popIn": {
-              from: { opacity: 0, transform: "scale(0.95) translateY(20px)" }, // โผล่มาจากด้านล่างพร้อมขยาย
+              from: { opacity: 0, transform: "scale(0.95) translateY(20px)" },
               to: { opacity: 1, transform: "scale(1) translateY(0)" },
             },
           }}
@@ -423,13 +445,11 @@ function App() {
               alignItems="center"
               justifyContent="center"
             >
-              {/* รูปภาพหน้ากาก */}
               <Grid item xs={12} sm={5} md={4}>
                 <Card
                   sx={{
                     borderRadius: 4,
                     overflow: "hidden",
-                    // === เปลี่ยนกรอบรูปและแสงฟุ้งใน Modal ให้เป็นสีประจำตัว ===
                     border: `2px solid ${selectedFace.memberColor}`,
                     boxShadow: `0 0 40px ${selectedFace.memberColor}80`,
                   }}
@@ -449,7 +469,6 @@ function App() {
                 </Card>
               </Grid>
 
-              {/* รายละเอียด */}
               <Grid item xs={12} sm={7} md={8}>
                 <Stack spacing={2}>
                   <Box>
@@ -464,8 +483,6 @@ function App() {
                     >
                       {selectedFace.nameJP}
                     </Typography>
-
-                    {/* === ทำให้ชื่อภาษาอังกฤษตอน Reveal เป็นสีประจำตัว === */}
                     <Typography
                       variant="h3"
                       sx={{
@@ -479,7 +496,6 @@ function App() {
                     >
                       {selectedFace.nameEN}
                     </Typography>
-
                     <Typography
                       variant="h6"
                       sx={{ fontWeight: 300, color: "white" }}
@@ -505,7 +521,6 @@ function App() {
                         {selectedFace.role}
                       </span>
                     </Typography>
-
                     <Typography
                       variant="subtitle1"
                       color="grey.400"
@@ -522,7 +537,6 @@ function App() {
                         {selectedFace.maskType}
                       </span>
                     </Typography>
-
                     <Typography
                       variant="body2"
                       color="grey.500"
@@ -538,6 +552,136 @@ function App() {
           </Container>
         </Box>
       )}
+
+      {/* ================= CUSTOM FLOATING MUSIC PLAYER (พับเก็บได้) ================= */}
+      <Box
+        sx={{
+          position: "fixed",
+          bottom: { xs: 20, md: 30 },
+          right: { xs: 20, md: 30 },
+          zIndex: 9000,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "flex-end", // จัดให้อยู่ชิดขวา
+        }}
+      >
+        {/* === จุดแก้ไขเพลง: เปลี่ยนลิงก์ src ตรงนี้ === */}
+        {/* ถ้าใช้เพลงในเครื่อง ให้เปลี่ยนเป็น: src={mukaThemeSong} */}
+        <audio
+          ref={audioRef}
+          src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
+          loop
+        />
+
+        {/* ส่วนที่หด/ขยายได้ (เครื่องเล่นเต็มรูปแบบ) */}
+        <Collapse in={isExpanded}>
+          <Box
+            sx={{
+              width: "280px",
+              bgcolor: "rgba(10, 10, 10, 0.95)",
+              border: "1px solid #bc002d",
+              boxShadow: "0 0 20px rgba(188, 0, 45, 0.4)",
+              borderRadius: "12px",
+              p: 2,
+              mb: 2, // ระยะห่างจากปุ่มกลมๆ ด้านล่าง
+              backdropFilter: "blur(10px)",
+            }}
+          >
+            <Stack spacing={1}>
+              {/* ชื่อเพลงและปุ่มปิด(หด) */}
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <Typography
+                  variant="subtitle2"
+                  sx={{
+                    color: "white",
+                    fontWeight: "bold",
+                    fontFamily: '"Orbitron", sans-serif',
+                  }}
+                >
+                  MUKA THEME (DEMO)
+                </Typography>
+                <IconButton
+                  size="small"
+                  onClick={() => setIsExpanded(false)}
+                  sx={{ color: "grey.500" }}
+                >
+                  <CloseIcon fontSize="small" />
+                </IconButton>
+              </Box>
+
+              <Typography
+                variant="caption"
+                sx={{ color: "primary.main", letterSpacing: 1, mt: -1 }}
+              >
+                NOW PLAYING
+              </Typography>
+
+              {/* ปุ่มควบคุมและ Slider */}
+              <Stack direction="row" alignItems="center" spacing={2}>
+                <IconButton
+                  onClick={togglePlay}
+                  sx={{
+                    bgcolor: "primary.main",
+                    color: "white",
+                    "&:hover": { bgcolor: "#8a0021" },
+                  }}
+                >
+                  {isPlaying ? <PauseIcon /> : <PlayArrowIcon />}
+                </IconButton>
+
+                <VolumeDownIcon
+                  sx={{ color: "grey.500", fontSize: "1.2rem" }}
+                />
+                <Slider
+                  size="small"
+                  value={volume}
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  onChange={handleVolumeChange}
+                  sx={{
+                    color: "primary.main",
+                    "& .MuiSlider-thumb": { width: 12, height: 12 },
+                  }}
+                />
+                <VolumeUpIcon sx={{ color: "grey.500", fontSize: "1.2rem" }} />
+              </Stack>
+            </Stack>
+          </Box>
+        </Collapse>
+
+        {/* ปุ่มกลมๆ สำหรับกางเครื่องเล่น (จะโชว์ตอนที่หดอยู่) */}
+        {!isExpanded && (
+          <IconButton
+            onClick={() => setIsExpanded(true)}
+            sx={{
+              bgcolor: "rgba(10,10,10,0.9)",
+              border: "1px solid #bc002d",
+              color: isPlaying ? "primary.main" : "white", // ถ้าเพลงเล่นอยู่ ไอคอนจะเป็นสีแดง
+              boxShadow: isPlaying
+                ? "0 0 15px rgba(188, 0, 45, 0.8)"
+                : "0 0 10px rgba(0,0,0,0.5)",
+              p: 2,
+              "&:hover": { bgcolor: "#bc002d", color: "white" },
+              // แอนิเมชันกระเพื่อมเบาๆ ถ้าเพลงเล่นอยู่
+              animation: isPlaying ? "pulse 2s infinite" : "none",
+              "@keyframes pulse": {
+                "0%": { transform: "scale(1)" },
+                "50%": { transform: "scale(1.1)" },
+                "100%": { transform: "scale(1)" },
+              },
+            }}
+          >
+            <MusicNoteIcon fontSize="large" />
+          </IconButton>
+        )}
+      </Box>
 
       {/* ================= FOOTER ================= */}
       <Box
